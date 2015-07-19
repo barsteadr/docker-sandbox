@@ -1,0 +1,34 @@
+---
+- name: Provision instances
+  hosts: local
+  connection: local
+  vars_files:
+    - external_vars/keys
+
+  vars:
+    - stop_all: false
+
+  gather_facts: false
+  tasks:
+    - local_action:
+        module: ec2
+        aws_access_key: "{{ ec2_manager_key }}"
+        aws_secret_key: "{{ ec2_manager_secret }}"
+        key_name: docker
+        instance_type: t2.micro
+        image: ami-d05e75b8
+        wait: yes
+        group_id: sg-1d2afb7a
+        region: us-east-1
+        vpc_subnet_id: subnet-2d622574
+        assign_public_ip: yes
+        id: qwertyuioplkjhgfdsa
+        instance_tags: { Name: DockerTest }
+      register: ec2s
+      tags: aws
+
+    - local_action:
+        wait_for host={{ item.instances[0].private_ip }} port=22 delay=15 timeout=320 state=started
+      when: item.instances[0].private_ip is defined and item.changed and item.item.state is defined and item.item.state == "running"
+      with_items: initialec2s.results
+      tags: aws
